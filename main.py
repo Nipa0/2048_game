@@ -1,5 +1,6 @@
 # 2048 implementation using pygame
 
+import copy
 import pygame
 import random
 
@@ -33,7 +34,8 @@ colors = {0: (204, 192, 179),
           'bg': (187, 173, 160)}
 
 # game variables initialize
-board_values = [[0 for _ in range(4)] for _ in range(4)]
+board_values = [[4 for _ in range(4)] for _ in range(4)]
+
 full = False
 immovable = False
 spawn_new = True
@@ -56,7 +58,7 @@ def draw_board():
 
 
 def draw_over():
-    """If the game is failed, this method will display a game over screen."""
+    """If the game is failed, this function will display a game over screen."""
 
     pygame.draw.rect(screen, "black", [50, 50, 300, 100], 0, 10)
     game_over_text = font.render("Game Over!", True, "white")
@@ -93,7 +95,7 @@ def draw_values(board):
 
 def new_piece(board):
     """Spawn a new piece on the board in a random empty tile.
-    If the board is not full, the method returns false as second parameter, if it is, the method returns true."""
+    If the board is not full, the function returns false as second parameter, if it is, the function returns true."""
 
     if any(0 in row for row in board):  # if there is any tile in the board, which value equals 0
         optional_tiles = []
@@ -108,12 +110,13 @@ def new_piece(board):
     return board, True
 
 
-def move(direction, board):
-    """The method takes in the direction which is pressed (up, down, left, right)
+def move(direction, board, check_directions=True):  # check_directions is a recursion anchor for move-ability checks
+    """The function takes in the direction which is pressed (up, down, left, right)
     and repositions and merges the tiles accordingly"""
 
     global score
     merged = [[False for _ in range(4)] for _ in range(4)]  # no piece has been merged so far
+    clone = copy.deepcopy(board)  # clone the board to check if any updates have occurred afterward
     if direction == 'UP':
         for i in range(4):
             for j in range(4):
@@ -185,9 +188,33 @@ def move(direction, board):
                         board[i][3 - j + shift] = 0
                         merged[i][4 - j + shift] = True
 
-    immovable = not any(True for row in merged for _ in row)
-    print(immovable)
+    immovable = False
+    equal = True
+    for i in range(4):
+        for j in range(4):
+            if board[i][j] != clone[i][j]:
+                equal = False
+    if equal and check_directions:
+        immovable = check_other_directions(direction, board)
+    if equal and not check_directions:  # Is only ever reached, when check_other_directions calls move()
+        immovable = True
     return board, immovable
+
+
+def check_other_directions(direction, board):  # If you couldn't move
+    """helper function to the move function, checks if there's movement possible in any other direction than the current
+    one, if there is no such, the function will set the immovable variable in move to true"""
+
+    res = True
+    if direction != "UP":
+        res = res and move("UP", copy.deepcopy(board), False)[1]
+    if direction != "DOWN":
+        res = res and move("DOWN", copy.deepcopy(board), False)[1]
+    if direction != "LEFT":
+        res = res and move("LEFT", copy.deepcopy(board), False)[1]
+    if direction != "RIGHT":
+        res = res and move("RIGHT", copy.deepcopy(board), False)[1]
+    return res
 
 
 # game loop
